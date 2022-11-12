@@ -45,8 +45,9 @@ def init_squares():
 ### activation and cost functions
 
 def relu(x: NDArray):
-    ret = np.array([x, 0.001*x])
-    return np.max(ret, axis=0)
+    ret = x.copy()
+    ret[x < 0] *= 0.001
+    return ret
 
 
 def g_relu(x: NDArray):
@@ -115,7 +116,7 @@ def step(lr: float):
 
 def dataloader(data: NDArray, labels: NDArray, batch_size: int, rate: float=0.8):
     length = data.shape[0]
-    idx = np.random.choice(data.shape[0], int(length*rate))
+    idx = np.random.choice(length, int(length*rate))
     data = data[idx, ...]
     labels = labels[idx, ...]
     for i in range(ceil(length / batch_size)):
@@ -144,6 +145,7 @@ def train(data: NDArray, labels: NDArray, lr: float, epochs: int, batch_size: in
 
 
 ### acc
+
 def accuracy(output: NDArray, labels: NDArray):
     sums = np.sum(np.argmax(output, axis=1) == labels)
     return sums / labels.shape[0]
