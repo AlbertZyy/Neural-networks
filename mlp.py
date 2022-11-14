@@ -23,23 +23,26 @@ grad_outs: _opt_arrs = [None] * len(features)
 grad_w_squares: _opt_arrs = [None] * len(features)
 grad_b_squares: _opt_arrs = [None] * len(features)
 
+grad_w_star: _opt_arrs = [None] * len(features)
+grad_b_star: _opt_arrs = [None] * len(features)
+
 
 ### init
 
 for i in range(1, len(features)):
     bl = np.zeros((1, features[i]), dtype=np.float64)
-    wl = np.random.randn(features[i-1], features[i]) * 0.1
-    wl *= sqrt(2 / (features[i-1] + features[i]))
+    wl = np.random.randn(features[i-1], features[i])
+    wl *= sqrt(2 / (features[i-1] + features[i])) * 0.1
     bias[i] = bl
     weights[i] = wl
-    grad_w_squares[i] = np.zeros((features[i-1], features[i]), dtype=np.float64)
-    grad_b_squares[i] = np.zeros((1, features[i]), dtype=np.float64)
 
 
-def init_squares():
+def init_optimizer():
     for i in range(1, len(features)):
-        grad_w_squares[i] *= 0
-        grad_b_squares[i] *= 0
+        grad_w_squares[i] = np.zeros((features[i-1], features[i]), dtype=np.float64)
+        grad_b_squares[i] = np.zeros((1, features[i]), dtype=np.float64)
+        grad_w_star[i] = np.zeros((features[i-1], features[i]), dtype=np.float64)
+        grad_b_star[i] = np.zeros((1, features[i]), dtype=np.float64)
 
 
 ### activation and cost functions
@@ -104,17 +107,19 @@ def backward(grad_out: NDArray):
 
 ### optimizer
 
-def step(lr: float):
+def step(lr: float, beta_1: float, beta_2: float):
     for i in range(1, len(features)):
-        grad_w_squares[i] += grad_w[i]**2
-        grad_b_squares[i] += grad_b[i]**2
-        weights[i] -= lr/np.sqrt(grad_w_squares[i] + 1) * grad_w[i]
-        bias[i] -= lr/np.sqrt(grad_b_squares[i] + 1) * grad_b[i]
+        grad_w_star[i] = beta_1 * grad_w_star[i] + (1-beta_1) * grad_w[i]
+        grad_b_star[i] = beta_1 * grad_b_star[i] + (1-beta_1) * grad_b[i]
+        grad_w_squares[i] = beta_2 * grad_w_squares[i] + (1-beta_2) * grad_w[i]**2
+        grad_b_squares[i] = beta_2 * grad_b_squares[i] + (1-beta_2) * grad_b[i]**2
+        weights[i] -= lr/np.sqrt(grad_w_squares[i] + 1e-4) * grad_w_star[i]
+        bias[i] -= lr/np.sqrt(grad_b_squares[i] + 1e-4) * grad_b_star[i]
 
 
 ### training
 
-def dataloader(data: NDArray, labels: NDArray, batch_size: int, rate: float=0.8):
+def dataloader(data: NDArray, labels: NDArray, batch_size: int, rate: float=0.9):
     length = data.shape[0]
     idx = np.random.choice(length, int(length*rate))
     data = data[idx, ...]
@@ -127,7 +132,7 @@ def dataloader(data: NDArray, labels: NDArray, batch_size: int, rate: float=0.8)
 
 
 def train(data: NDArray, labels: NDArray, lr: float, epochs: int, batch_size: int):
-    init_squares()
+    init_optimizer()
     for epoch in range(epochs):
 
         for batch_data, batch_labels in dataloader(data, labels, batch_size):
@@ -135,13 +140,13 @@ def train(data: NDArray, labels: NDArray, lr: float, epochs: int, batch_size: in
             forward(batch_data)
             g_loss = g_entropy_softmax(outputs[-1], batch_labels)
             backward(g_loss)
-            step(lr)
+            step(lr, 0.05, 0.1)
 
-        if epoch % 5 == 0:
+        if (epoch + 1) % 5 == 0:
 
             loss = loss_fn(outputs[-1], batch_labels)
             acc = accuracy(outputs[-1], batch_labels)
-            print(f"Epoch: {epoch} | loss: {loss:.4f}, acc: {acc*100:.4f}%")
+            print(f"Epoch: {epoch + 1} | loss: {loss:.4f}, acc: {acc*100:.4f}%")
 
 
 ### acc
@@ -161,7 +166,7 @@ if __name__ == "__main__":
     test_data = test_data.reshape(60000, -1)
     test_labels = np.load("./mnist/test_labels.npy")
 
-    train(train_data, train_labels, 0.001, 120, 5000)
+    train(train_data, train_labels, 0.001, 100, 5000)
 
     forward(test_data)
     loss = loss_fn(outputs[-1], test_labels)
