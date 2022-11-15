@@ -113,8 +113,8 @@ def step(lr: float, beta_1: float, beta_2: float):
         grad_b_star[i] = beta_1 * grad_b_star[i] + (1-beta_1) * grad_b[i]
         grad_w_squares[i] = beta_2 * grad_w_squares[i] + (1-beta_2) * grad_w[i]**2
         grad_b_squares[i] = beta_2 * grad_b_squares[i] + (1-beta_2) * grad_b[i]**2
-        weights[i] -= lr/np.sqrt(grad_w_squares[i] + 1e-4) * grad_w_star[i]
-        bias[i] -= lr/np.sqrt(grad_b_squares[i] + 1e-4) * grad_b_star[i]
+        weights[i] -= lr/np.sqrt(grad_w_squares[i] + 1e-3) * grad_w_star[i]
+        bias[i] -= lr/np.sqrt(grad_b_squares[i] + 1e-3) * grad_b_star[i]
 
 
 ### training
@@ -140,13 +140,13 @@ def train(data: NDArray, labels: NDArray, lr: float, epochs: int, batch_size: in
             forward(batch_data)
             g_loss = g_entropy_softmax(outputs[-1], batch_labels)
             backward(g_loss)
-            step(lr, 0.05, 0.1)
+            step(lr, 0.01, 0.1)
 
         if (epoch + 1) % 5 == 0:
-
-            loss = loss_fn(outputs[-1], batch_labels)
-            acc = accuracy(outputs[-1], batch_labels)
-            print(f"Epoch: {epoch + 1} | loss: {loss:.4f}, acc: {acc*100:.4f}%")
+            forward(data)
+            loss = loss_fn(outputs[-1], labels)
+            acc = accuracy(outputs[-1], labels)
+            print(f"Epoch: {epoch + 1} | loss: {loss:.6f}, acc: {acc*100:.4f}%")
 
 
 ### acc
@@ -159,16 +159,17 @@ def accuracy(output: NDArray, labels: NDArray):
 if __name__ == "__main__":
 
     ### get data
-    train_data: NDArray = np.load("./mnist/train_data.npy")
+    train_data = np.load("./mnist/train_data.npy")
     train_data = train_data.reshape(60000, -1)
     train_labels = np.load("./mnist/train_labels.npy")
+
     test_data = np.load("./mnist/test_data.npy")
-    test_data = test_data.reshape(60000, -1)
+    test_data = test_data.reshape(10000, -1)
     test_labels = np.load("./mnist/test_labels.npy")
 
-    train(train_data, train_labels, 0.001, 100, 5000)
+    train(train_data, train_labels, 0.001, 160, 5400)
 
     forward(test_data)
     loss = loss_fn(outputs[-1], test_labels)
     acc = accuracy(outputs[-1], test_labels)
-    print(f"Test | loss: {loss:.4f}, acc: {acc*100:.4f}%")
+    print(f"Test | loss: {loss:.6f}, acc: {acc*100:.4f}%")
