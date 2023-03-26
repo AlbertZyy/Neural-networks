@@ -167,7 +167,7 @@ if __name__ == "__main__":
     test_data = test_data.reshape(10000, -1)
     test_labels = np.load("./mnist/test_labels.npy")
 
-    train(train_data, train_labels, 0.001, 160, 5400)
+    train(train_data, train_labels, 0.001, 50, 5400)
 
     forward(test_data)
     loss = loss_fn(outputs[-1], test_labels)
